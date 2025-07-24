@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import CompleteClient from "./component.tsx";
+import CompleteClient from "./component";
 
 export default function AuthCompletePage() {
   return (
