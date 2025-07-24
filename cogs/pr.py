@@ -3,12 +3,16 @@ from discord import app_commands
 from discord.ext import commands
 import httpx
 from datetime import datetime
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
 
 COLOR_BLUE = 0x3498db
 
 class PullRequest(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
+        self.users_collection = self.mongo_client.gitbot.users
 
     pr_group = app_commands.Group(name="pr", description="Commands for GitHub pull requests")
 
@@ -114,5 +118,89 @@ class PullRequest(commands.Cog):
         else:
             await self._fetch_and_display_single_pr(interaction, owner, repo_name, pr_id)
 
+    @pr_group.command(name="merge", description="Merge a pull request (requires authentication)")
+    @app_commands.describe(
+        repo="Repository in the form of owner/repo (e.g. myferr/x3)",
+        pr_id="Pull request ID (e.g. 1)"
+    )
+    async def pr_merge(self, interaction: discord.Interaction, repo: str, pr_id: int):
+        await interaction.response.defer(ephemeral=True)
+        discord_id = str(interaction.user.id)
+        user = await self.users_collection.find_one({"discord_id": discord_id})
+        if not user:
+            await interaction.followup.send("❌ You must link your GitHub account using `/auth` before merging PRs.", ephemeral=True)
+            return
+
+        token = user.get("token")
+        if not token:
+            await interaction.followup.send("❌ Your GitHub token is missing. Please re-authenticate with `/auth`.", ephemeral=True)
+            return
+
+        try:
+            owner, repo_name = repo.split('/')
+        except ValueError:
+            await interaction.followup.send("Invalid repository format. Use `owner/repo`.", ephemeral=True)
+            return
+
+        url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_id}/merge"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        async with httpx.AsyncClient() as client:
+            res = await client.put(url, headers=headers)
+            data = res.json()
+
+        if res.status_code == 200 and data.get("merged"):
+            await interaction.followup.send(f"✅ PR #{pr_id} has been merged successfully.", ephemeral=True)
+        elif res.status_code == 405:
+            await interaction.followup.send(f"❌ PR #{pr_id} cannot be merged (maybe conflicts).", ephemeral=True)
+        else:
+            message = data.get("message", "Unknown error.")
+            await interaction.followup.send(f"❌ Failed to merge PR #{pr_id}: {message}", ephemeral=True)
+
+    @pr_group.command(name="close", description="Close a pull request without merging (requires authentication)")
+    @app_commands.describe(
+        repo="Repository in the form of owner/repo (e.g. myferr/x3)",
+        pr_id="Pull request ID (e.g. 1)"
+    )
+    async def pr_close(self, interaction: discord.Interaction, repo: str, pr_id: int):
+        await interaction.response.defer(ephemeral=True)
+        discord_id = str(interaction.user.id)
+        user = await self.users_collection.find_one({"discord_id": discord_id})
+        if not user:
+            await interaction.followup.send("❌ You must link your GitHub account using `/auth` before closing PRs.", ephemeral=True)
+            return
+
+        token = user.get("token")
+        if not token:
+            await interaction.followup.send("❌ Your GitHub token is missing. Please re-authenticate with `/auth`.", ephemeral=True)
+            return
+
+        try:
+            owner, repo_name = repo.split('/')
+        except ValueError:
+            await interaction.followup.send("Invalid repository format. Use `owner/repo`.", ephemeral=True)
+            return
+
+        url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_id}"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        json_data = {
+            "state": "closed"
+        }
+        async with httpx.AsyncClient() as client:
+            res = await client.patch(url, headers=headers, json=json_data)
+            data = res.json()
+
+        if res.status_code == 200 and data.get("state") == "closed":
+            await interaction.followup.send(f"✅ PR #{pr_id} has been closed.", ephemeral=True)
+        else:
+            message = data.get("message", "Unknown error.")
+            await interaction.followup.send(f"❌ Failed to close PR #{pr_id}: {message}", ephemeral=True)
+
 async def setup(bot):
     await bot.add_cog(PullRequest(bot))
+
