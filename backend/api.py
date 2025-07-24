@@ -12,10 +12,11 @@ users = mongo.gitbot.users
 
 CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
+BACKEND = os.getenv("BACKEND_URL")
 
 @app.get("/auth")
 def auth(discord: str):
-    redirect_uri = f"https://localhost:2000/callback?discord={discord}"
+    redirect_uri = f"https://{BACKEND_URL}/callback?discord={discord}"
     auth_url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={CLIENT_ID}&redirect_uri={redirect_uri}&scope=repo"
@@ -60,7 +61,5 @@ def callback(code: str, discord: str):
         "linked_at": time.time()
     })
 
-    return HTMLResponse(
-        f"<h2>✅ Linked GitHub <b>{user_json['login']}</b> with your Discord!</h2>"
-    )
+    return RedirectResponse(f"https://thegitbot.vercel.app/auth/complete?discord={user_json['login']}")
 
