@@ -17,7 +17,16 @@ class PullRequest(commands.Cog):
     pr_group = app_commands.Group(name="pr", description="Commands for GitHub pull requests")
 
     async def _fetch_and_display_pr_list(self, interaction: discord.Interaction, owner: str, repo_name: str, state: str):
-        headers = {"Accept": "application/vnd.github.v3+json"}
+        discord_id = str(interaction.user.id)
+        user = await self.users_collection.find_one({"discord_id": discord_id})
+        token = user.get("token") if user else None
+
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+        }
+        if token:
+            headers["Authorization"] = f"token {token}"
+
         url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls?state={state}"
         async with httpx.AsyncClient() as client:
             r = await client.get(url, headers=headers)
@@ -38,13 +47,22 @@ class PullRequest(commands.Cog):
                 title = pr_item["title"]
                 number = pr_item["number"]
                 html_url = pr_item["html_url"]
-                user = pr_item["user"]["login"]
-                embed.add_field(name=f"#{number}: {title}", value=f"Opened by {user} ([Link]({html_url}))", inline=False)
+                user_login = pr_item["user"]["login"]
+                embed.add_field(name=f"#{number}: {title}", value=f"Opened by {user_login} ([Link]({html_url}))", inline=False)
 
             await interaction.followup.send(embed=embed)
 
     async def _fetch_and_display_single_pr(self, interaction: discord.Interaction, owner: str, repo_name: str, pr_id: int):
-        headers = {"Accept": "application/vnd.github.v3+json"}
+        discord_id = str(interaction.user.id)
+        user = await self.users_collection.find_one({"discord_id": discord_id})
+        token = user.get("token") if user else None
+
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+        }
+        if token:
+            headers["Authorization"] = f"token {token}"
+
         url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_id}"
         async with httpx.AsyncClient() as client:
             r = await client.get(url, headers=headers)
@@ -53,34 +71,34 @@ class PullRequest(commands.Cog):
                 return
             pr_data = r.json()
 
-            title = pr_data["title"]
-            number = pr_data["number"]
-            user = pr_data["user"]["login"]
-            state = pr_data["state"]
-            html_url = pr_data["html_url"]
-            created_at = datetime.strptime(pr_data["created_at"], "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d %H:%M:%S UTC")
-            body = pr_data["body"] if pr_data["body"] else "No description provided."
-            commits = pr_data["commits"]
-            additions = pr_data["additions"]
-            deletions = pr_data["deletions"]
-            changed_files = pr_data["changed_files"]
+        title = pr_data["title"]
+        number = pr_data["number"]
+        user_login = pr_data["user"]["login"]
+        state = pr_data["state"]
+        html_url = pr_data["html_url"]
+        created_at = datetime.strptime(pr_data["created_at"], "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d %H:%M:%S UTC")
+        body = pr_data["body"] if pr_data["body"] else "No description provided."
+        commits = pr_data["commits"]
+        additions = pr_data["additions"]
+        deletions = pr_data["deletions"]
+        changed_files = pr_data["changed_files"]
 
-            embed = discord.Embed(
-                title=f"Pull Request #{number}: {title}",
-                url=html_url,
-                description=body,
-                color=COLOR_BLUE
-            )
-            embed.add_field(name="Repository", value=f"{owner}/{repo_name}", inline=True)
-            embed.add_field(name="Status", value=state.capitalize(), inline=True)
-            embed.add_field(name="Opened By", value=user, inline=True)
-            embed.add_field(name="Created At", value=created_at, inline=False)
-            embed.add_field(name="Commits", value=str(commits), inline=True)
-            embed.add_field(name="Additions", value=str(additions), inline=True)
-            embed.add_field(name="Deletions", value=str(deletions), inline=True)
-            embed.add_field(name="Files Changed", value=str(changed_files), inline=True)
+        embed = discord.Embed(
+            title=f"Pull Request #{number}: {title}",
+            url=html_url,
+            description=body,
+            color=COLOR_BLUE
+        )
+        embed.add_field(name="Repository", value=f"{owner}/{repo_name}", inline=True)
+        embed.add_field(name="Status", value=state.capitalize(), inline=True)
+        embed.add_field(name="Opened By", value=user_login, inline=True)
+        embed.add_field(name="Created At", value=created_at, inline=False)
+        embed.add_field(name="Commits", value=str(commits), inline=True)
+        embed.add_field(name="Additions", value=str(additions), inline=True)
+        embed.add_field(name="Deletions", value=str(deletions), inline=True)
+        embed.add_field(name="Files Changed", value=str(changed_files), inline=True)
 
-            await interaction.followup.send(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     @pr_group.command(name="open", description="Get information on open GitHub pull requests")
     @app_commands.describe(
