@@ -16,7 +16,7 @@ BACKEND = os.getenv("BACKEND_URL")
 
 @app.get("/auth")
 def auth(discord: str):
-    redirect_uri = f"https://{BACKEND_URL}/callback?discord={discord}"
+    redirect_uri = f"https://{BACKEND}/callback?discord={discord}"
     auth_url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={CLIENT_ID}&redirect_uri={redirect_uri}&scope=repo"

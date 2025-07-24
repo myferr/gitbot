@@ -3,12 +3,15 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import asyncio
+from pymongo import MongoClient
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
+MONGO_URI = os.getenv("MONGO_URI")
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
+bot.mongo = MongoClient(MONGO_URI)
 
 @bot.event
 async def on_ready():
