@@ -1,0 +1,77 @@
+---
+title: Main Bot Entry Point
+description: This file initializes and runs the GitBot Discord bot.
+---
+
+# `main.py`
+
+This file serves as the primary entry point for the GitBot Discord bot. It handles the bot's setup, including loading environment variables, defining intents, synchronizing application commands, and loading all cogs (extensions).
+
+## Functions
+
+### `on_ready()`
+
+An asynchronous event handler that is called when the bot successfully connects to Discord.
+
+- **Purpose**: Logs the bot's login status and attempts to globally synchronize application commands.
+- **Behavior**:
+    - Prints a message indicating the bot is logged in.
+    - Calls `bot.tree.sync()` to synchronize global application commands. This process can take up to an hour to propagate across Discord.
+    - Prints the number of synchronized commands or an error message if synchronization fails.
+
+```python
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user}")
+    try:
+        synced = await bot.tree.sync()  # Global sync (takes up to 1 hour to propagate)
+        print(f"Globally synced {len(synced)} command(s).")
+    except Exception as e:
+        print(f"Command sync failed: {e}")
+```
+
+### `load_cogs()`
+
+An asynchronous function responsible for loading all bot extensions (cogs) from the `./cogs` directory.
+
+- **Purpose**: Dynamically loads all Python files in the `cogs` directory as bot extensions, excluding any files starting with `__` (e.g., `__init__.py`).
+- **Behavior**:
+    - Iterates through all files in the `./cogs` directory.
+    - If a file ends with `.py` and does not start with `__`, it loads it as a cog using `bot.load_extension()`.
+
+```python
+async def load_cogs():
+    for filename in os.listdir("./cogs"):
+        if filename.endswith(".py") and not filename.startswith("__"):
+            await bot.load_extension(f"cogs.{filename[:-3]}")
+```
+
+### `main()`
+
+The main asynchronous function that orchestrates the bot's startup.
+
+- **Purpose**: Loads cogs and starts the Discord bot.
+- **Behavior**:
+    - Calls `load_cogs()` to load all extensions.
+    - Calls `bot.start(TOKEN)` to connect the bot to Discord using the provided token.
+
+```python
+async def main():
+    await load_cogs()
+    await bot.start(TOKEN)
+```
+
+## Global Variables
+
+- `TOKEN`: The Discord bot token loaded from environment variables using `dotenv`.
+- `intents`: Discord intents configured to default settings.
+- `bot`: The `commands.Bot` instance, representing the Discord bot client.
+
+## Execution
+
+The `if __name__ == "__main__":` block ensures that the `main()` function is executed when the script is run directly, initiating the bot.
+
+```python
+if __name__ == "__main__":
+    asyncio.run(main())
+```

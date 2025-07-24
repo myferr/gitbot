@@ -1,0 +1,111 @@
+---
+title: Authentication Cog
+description: This cog handles GitHub authentication for Discord users.
+---
+
+# `cogs/auth.py`
+
+This cog provides commands for Discord users to link and unlink their GitHub accounts with GitBot, facilitating authenticated interactions with the GitHub API.
+
+## Class: `Auth(commands.Cog)`
+
+### `__init__(self, bot)`
+
+Initializes the `Auth` cog.
+
+- **Parameters**:
+    - `bot`: The Discord bot instance.
+- **Purpose**: Sets up the bot, GitHub client ID, backend base URL, and initializes the MongoDB client for user data.
+
+```python
+class Auth(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.client_id = os.getenv("GITHUB_CLIENT_ID")
+        self.backend_base_url = os.getenv("BACKEND_BASE_URL", "http://localhost:2000")
+        self.mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
+        self.users_collection = self.mongo_client.gitbot.users
+```
+
+### `auth(self, interaction: discord.Interaction)`
+
+Links a user's GitHub account with GitBot.
+
+- **Decorator**: `@app_commands.command(name="auth", description="Link your GitHub account with GitBot")`
+- **Parameters**:
+    - `interaction`: The Discord interaction object.
+- **Purpose**: Checks if the user is already linked. If not, it generates a GitHub OAuth URL and sends it to the user via DM.
+- **Behavior**:
+    - If the user is already linked, sends an ephemeral message indicating so.
+    - Constructs the OAuth URL using the `backend_base_url` and `client_id`.
+    - Creates an embedded message with the authorization link.
+    - Attempts to send the embed to the user's DMs. If successful, sends a confirmation message in the channel. If DM fails due to privacy settings, informs the user.
+
+```python
+    @app_commands.command(name="auth", description="Link your GitHub account with GitBot")
+    async def auth(self, interaction: discord.Interaction):
+        discord_id = str(interaction.user.id)
+
+        user = await self.users_collection.find_one({"discord_id": discord_id})
+        if user:
+            await interaction.response.send_message(
+                "✅ You are already linked to GitHub user: "
+                f"`{user.get('github_user', 'unknown')}`",
+                ephemeral=True,
+            )
+            return
+
+        oauth_url = f"{self.backend_base_url}/auth?discord={discord_id}&client_id={self.client_id}"
+        embed = discord.Embed(
+            title="🔗 Link Your GitHub Account",
+            description=f"[Click here to authorize GitHub]({oauth_url})",
+            color=0x2ecc71,
+        )
+        try:
+            await interaction.user.send(embed=embed)
+            await interaction.response.send_message(
+                "📬 I sent you a DM with the auth link!", ephemeral=True
+            )
+        except discord.Forbidden:
+            await interaction.response.send_message(
+                "❌ I couldn't send you a DM. Please check your privacy settings.",
+                ephemeral=True,
+            )
+```
+
+### `unauth(self, interaction: discord.Interaction)`
+
+Unlinks a user's GitHub account from GitBot.
+
+- **Decorator**: `@app_commands.command(name="unauth", description="Unlink your GitHub account from GitBot")`
+- **Parameters**:
+    - `interaction`: The Discord interaction object.
+- **Purpose**: Removes the user's GitHub linking information from the database.
+- **Behavior**:
+    - Deletes the user's entry from the `users_collection` based on their Discord ID.
+    - Sends an ephemeral message confirming the unlinking or indicating that the user was not linked.
+
+```python
+    @app_commands.command(name="unauth", description="Unlink your GitHub account from GitBot")
+    async def unauth(self, interaction: discord.Interaction):
+        discord_id = str(interaction.user.id)
+        result = await self.users_collection.delete_one({"discord_id": discord_id})
+        if result.deleted_count:
+            await interaction.response.send_message("✅ You have been unlinked from GitHub.", ephemeral=True)
+        else:
+            await interaction.response.send_message("ℹ️ You were not linked to any GitHub account.", ephemeral=True)
+```
+
+## Setup Function
+
+### `setup(bot)`
+
+Adds the `Auth` cog to the bot.
+
+- **Parameters**:
+    - `bot`: The Discord bot instance.
+
+```python
+async def setup(bot):
+    await bot.add_cog(Auth(bot))
+```

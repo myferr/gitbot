@@ -1,0 +1,57 @@
+---
+title: Command Reference
+description: A comprehensive reference for all commands available in GitBot.
+---
+
+## Authentication Commands
+
+*   `/auth`: Link your GitHub account with GitBot
+*   `/unauth`: Unlink your GitHub account from GitBot
+*   `/me`: Show your GitHub authentication status and profile info
+
+## Repository Commands
+
+*   `/repo view <owner/repo>`: View GitHub repository information.
+*   `/repo create`: Create a new GitHub repository (modal).
+*   `/releases <owner/repo>`: Lists the latest releases of a GitHub repository with pagination.
+*   `/release <owner/repo> <tag>`: Shows information about a specific release of a GitHub repository.
+*   `/changelog <owner/repo>`: Lists recent commits (changelog) for a GitHub repository with pagination.
+*   `/commit <owner/repo> <sha>`: Shows information about a specific commit in a GitHub repository.
+*   `/license <owner/repo>`: Shows the license information for a GitHub repository.
+
+## Issue Commands
+
+*   `/issue open <owner/repo> [issue_id]`: Get information on open GitHub issues
+*   `/issue closed <owner/repo> [issue_id]`: Get information on closed GitHub issues
+*   `/issue close <owner/repo> <issue_id>`: Close a GitHub issue (requires authentication)
+*   `/issue new <owner/repo>`: Open a modal to create a new GitHub issue (requires authentication)
+
+## Pull Request Commands
+
+*   `/pr open <owner/repo> [pr_id]`: Get information on open GitHub pull requests
+*   `/pr closed <owner/repo> [pr_id]`: Get information on closed GitHub pull requests
+*   `/pr merge <owner/repo> <pr_id>`: Merge a pull request (requires authentication)
+*   `/pr close <owner/repo> <pr_id>`: Close a pull request without merging (requires authentication)
+
+## Gist Commands
+
+*   `/gist info <gist_id>`: Provides detailed information about a GitHub Gist.
+*   `/gist content <gist_id> <filename>`: Shows the content of a specific file within a GitHub Gist.
+
+## User Profile Commands
+
+*   `/profile <username>`: Displays comprehensive information about a GitHub user.
+*   `/top langs <username>`: Show top used languages for a user
+*   `/top repos <username>`: Show a user's repositories sorted by stars
+
+## File Commands
+
+*   `/file <owner/repo> <path>`: Shows the content of a file from a GitHub repository.
+
+## Notification Commands
+
+*   `/notifications`: Get your GitHub notifications via DM.
+
+## General Commands
+
+*   `/help`: Shows this help message.

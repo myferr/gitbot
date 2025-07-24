@@ -1,0 +1,80 @@
+---
+title: Privacy Policy for GitBot
+description: The privacy policy for GitBot, please read the following document carefully.
+---
+
+**Effective Date:** July 24, 2025
+**Last Updated:** July 24, 2025
+
+GitBot ("the Bot") is a Discord bot that lets users view and interact with GitHub data directly from Discord. This Privacy Policy outlines what data we collect, how we use it, and your rights.
+
+---
+
+### 1. What We Collect
+
+GitBot may store the following **after you explicitly authenticate via GitHub OAuth**:
+
+* **Discord User ID:** To link your GitHub account with your Discord account.
+* **GitHub Username:** To show who you are on GitHub.
+* **GitHub OAuth Access Token:** To perform GitHub API requests on your behalf.
+
+We do **not** collect your email, password, or any other sensitive account data.
+
+---
+
+### 2. When and How Data Is Stored
+
+* GitHub access tokens are only saved **after you approve the GitHub app login flow**.
+* If you never use `/auth` and authenticate via GitHub, we store **nothing** about you.
+* We only access GitHub data (like notifications or repos) **when you request it** via a command like `/notifications` or `/repo`. Nothing is stored.
+
+---
+
+### 3. How We Use Your Data
+
+Your data is used only to:
+
+* Make authenticated API calls to GitHub (e.g., fetch notifications or list repos)
+* Enable advanced features like personalized GitHub dashboards, commands, etc.
+
+We do **not** share your data with anyone.
+
+---
+
+### 4. Data Storage and Security
+
+* All user data is stored in a private MongoDB database.
+* Data is only accessible by the bot and its developer.
+
+---
+
+### 5. Deleting Your Data
+
+You can request deletion of your data at any time by:
+
+* Running the `/unauth` command, or
+* Contacting the developer directly via GitHub or Discord
+
+Your GitHub token and user info will be deleted from the database.
+
+---
+
+### 6. Your Consent
+
+We only store GitHub-related data **after you authorize it** through GitHub's official OAuth flow. Using the bot without logging in stores nothing about you.
+
+---
+
+### 7. Changes
+
+If this policy changes, the "Last Updated" date will be changed. Major updates will be announced through the GitBot [GitHub repo](https://github.com/myferr/gitbot) or [Discord server](https://dsc.gg/myferslab).
+
+---
+
+### 8. Contact
+
+For any questions, issues, or data removal requests:
+
+Email: contactme.myfer@protonmail.com
+GitHub: [@myferr](https://github.com/myferr)
+

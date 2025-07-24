@@ -1,0 +1,94 @@
+---
+title: Backend API
+description: This file defines the FastAPI backend for handling GitHub OAuth and user management.
+---
+
+# `backend/api.py`
+
+This file implements a FastAPI application that serves as the backend for GitBot, primarily handling GitHub OAuth authentication and managing user data in a MongoDB database.
+
+## Endpoints
+
+### `GET /auth`
+
+Initiates the GitHub OAuth process.
+
+- **Parameters**:
+    - `discord` (query parameter): The Discord user ID to associate with the GitHub account.
+- **Purpose**: Redirects the user to the GitHub authorization page.
+- **Returns**: A `RedirectResponse` to GitHub's OAuth authorization URL.
+
+```python
+@app.get("/auth")
+def auth(discord: str):
+    redirect_uri = f"https://localhost:2000/callback?discord={discord}"
+    auth_url = (
+        f"https://github.com/login/oauth/authorize"
+        f"?client_id={CLIENT_ID}&redirect_uri={redirect_uri}&scope=repo"
+    )
+    return RedirectResponse(auth_url)
+```
+
+### `GET /callback`
+
+Handles the callback from GitHub after a user authorizes the application.
+
+- **Parameters**:
+    - `code` (query parameter): The authorization code received from GitHub.
+    - `discord` (query parameter): The Discord user ID passed during the initial `/auth` request.
+- **Purpose**: Exchanges the authorization code for an access token, fetches user information from GitHub, and saves the user's details (including the access token) to the MongoDB database.
+- **Returns**:
+    - An `HTMLResponse` indicating success if the linking is successful.
+    - An `HTMLResponse` with an error message if token exchange or user fetching fails.
+
+```python
+@app.get("/callback")
+def callback(code: str, discord: str):
+    # Step 1: Exchange code for token
+    token_res = requests.post(
+        "https://github.com/login/oauth/access_token",
+        headers={"Accept": "application/json"},
+        data={
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "code": code
+        }
+    )
+    token_json = token_res.json()
+    access_token = token_json.get("access_token")
+
+    if not access_token:
+        return HTMLResponse("❌ Failed to get token", status_code=400)
+
+    # Step 2: Fetch user info
+    user_res = requests.get(
+        "https://api.github.com/user",
+        headers={"Authorization": f"token {access_token}"}
+    )
+    user_json = user_res.json()
+
+    if "login" not in user_json:
+        return HTMLResponse("❌ Failed to fetch user", status_code=400)
+
+    # Step 3: Save to DB
+    users.insert_one({
+        "github_id": user_json["id"],
+        "github_user": user_json["login"],
+        "avatar_url": user_json["avatar_url"],
+        "discord_id": discord,
+        "token": access_token,
+        "linked_at": time.time()
+    })
+
+    return HTMLResponse(
+        f"<h2>✅ Linked GitHub <b>{user_json['login']}</b> with your Discord!</h2>"
+    )
+```
+
+## Global Variables
+
+- `app`: The FastAPI application instance.
+- `mongo`: MongoClient instance for connecting to MongoDB.
+- `users`: MongoDB collection for storing user data.
+- `CLIENT_ID`: GitHub OAuth Client ID loaded from environment variables.
+- `CLIENT_SECRET`: GitHub OAuth Client Secret loaded from environment variables.
