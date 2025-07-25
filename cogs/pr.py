@@ -6,6 +6,7 @@ import httpx
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+from token_handler import TokenHandler
 
 COLOR_BLUE = 0x3498db
 
@@ -73,13 +74,14 @@ class PullRequest(commands.Cog):
         self.bot = bot
         self.mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
         self.users_collection = self.mongo_client.gitbot.users
+        self.token_handler = TokenHandler()
 
     pr_group = app_commands.Group(name="pr", description="Commands for GitHub pull requests")
 
     async def _fetch_and_display_pr_list(self, interaction: discord.Interaction, owner: str, repo_name: str, state: str):
         discord_id = str(interaction.user.id)
         user = await self.users_collection.find_one({"discord_id": discord_id})
-        token = user.get("token") if user else None
+        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
 
         headers = {"Accept": "application/vnd.github.v3+json"}
         if token:
@@ -102,20 +104,17 @@ class PullRequest(commands.Cog):
                 color=COLOR_BLUE
             )
             for pr_item in prs_data:
-        from token_handler import TokenHandler
-        self.token_handler = TokenHandler()
                 title = pr_item["title"]
                 number = pr_item["number"]
                 html_url = pr_item["html_url"]
                 user_login = pr_item["user"]["login"]
-        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
 
             await interaction.followup.send(embed=embed)
 
     async def _fetch_and_display_single_pr(self, interaction: discord.Interaction, owner: str, repo_name: str, pr_id: int):
         discord_id = str(interaction.user.id)
         user = await self.users_collection.find_one({"discord_id": discord_id})
-        token = user.get("token") if user else None
+        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
 
         headers = {"Accept": "application/vnd.github.v3+json"}
         if token:
@@ -142,7 +141,6 @@ class PullRequest(commands.Cog):
         changed_files = pr_data["changed_files"]
 
         embed = discord.Embed(
-        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
             url=html_url,
             description=body,
             color=COLOR_BLUE
@@ -198,7 +196,7 @@ class PullRequest(commands.Cog):
     @app_commands.describe(
         repo="Repository in the form of owner/repo (e.g. myferr/x3)",
         pr_id="Pull request ID (e.g. 1)"
-        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
+    )
     async def pr_merge(self, interaction: discord.Interaction, repo: str, pr_id: int):
         await interaction.response.defer(ephemeral=True)
         discord_id = str(interaction.user.id)
@@ -239,7 +237,7 @@ class PullRequest(commands.Cog):
     @app_commands.describe(
         repo="Repository in the form of owner/repo (e.g. myferr/x3)",
         pr_id="Pull request ID (e.g. 1)"
-        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
+    )
     async def pr_close(self, interaction: discord.Interaction, repo: str, pr_id: int):
         await interaction.response.defer(ephemeral=True)
         discord_id = str(interaction.user.id)
