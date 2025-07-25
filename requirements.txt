@@ -1,0 +1,16 @@
+# Discord bot
+discord.py>=2.3.2
+python-dotenv
+pymongo
+aiohttp
+
+# FastAPI backend
+fastapi
+uvicorn
+requests
+python-dotenv
+pymongo
+
+# Cryptography for token encryption
+cryptography
+

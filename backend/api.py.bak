@@ -1,11 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse, HTMLResponse
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from cryptography.fernet import Fernet
 import os, requests, time
 
-# Load environment variables
 load_dotenv()
 
 app = FastAPI()
@@ -15,9 +13,6 @@ users = mongo.gitbot.users
 CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 BACKEND = os.getenv("BACKEND_URL")
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
-
-fernet = Fernet(ENCRYPTION_KEY)
 
 @app.get("/auth")
 def auth(discord: str):
@@ -56,23 +51,15 @@ def callback(code: str, discord: str):
     if "login" not in user_json:
         return HTMLResponse("❌ Failed to fetch user", status_code=400)
 
-    # Step 3: Encrypt token
-    encrypted_token = fernet.encrypt(access_token.encode())
-
-    # Step 4: Save encrypted token to DB
-    users.update_one(
-        {"discord_id": discord},
-        {
-            "$set": {
-                "github_id": user_json["id"],
-                "github_user": user_json["login"],
-                "avatar_url": user_json["avatar_url"],
-                "token": encrypted_token,
-                "linked_at": time.time()
-            }
-        },
-        upsert=True
-    )
+    # Step 3: Save to DB
+    users.insert_one({
+        "github_id": user_json["id"],
+        "github_user": user_json["login"],
+        "avatar_url": user_json["avatar_url"],
+        "discord_id": discord,
+        "token": access_token,
+        "linked_at": time.time()
+    })
 
     return RedirectResponse(f"https://thegitbot.vercel.app/auth/complete?discord={user_json['login']}")
 
