@@ -1,12 +1,72 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+from discord.ui import View, Button
 import httpx
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
 COLOR_BLUE = 0x3498db
+
+
+class CommentPaginator(discord.ui.View):
+    def __init__(self, comments, page_size=5):
+        super().__init__(timeout=300)
+        self.comments = comments
+        self.page_size = page_size
+        self.page = 0
+
+        self.prev_button = discord.ui.Button(label="⏪ Prev", style=discord.ButtonStyle.secondary)
+        self.next_button = discord.ui.Button(label="Next ⏩", style=discord.ButtonStyle.secondary)
+
+        self.prev_button.callback = self.prev_page
+        self.next_button.callback = self.next_page
+
+        self.add_item(self.prev_button)
+        self.add_item(self.next_button)
+
+        self.update_button_states()
+
+    def update_button_states(self):
+        total_pages = (len(self.comments) + self.page_size - 1) // self.page_size
+        self.prev_button.disabled = self.page <= 0
+        self.next_button.disabled = self.page >= total_pages - 1
+
+    def format_embed(self):
+        embed = discord.Embed(
+            title=f"💬 Comments — Page {self.page + 1}",
+            color=COLOR_BLUE
+        )
+        start = self.page * self.page_size
+        end = min(start + self.page_size, len(self.comments))
+
+        for comment in self.comments[start:end]:
+            user = comment["user"]["login"]
+            created_at = comment["created_at"][:10]
+            body = comment["body"][:500] + ("..." if len(comment["body"]) > 500 else "")
+            embed.add_field(name=f"{user} — {created_at}", value=body or "*No content*", inline=False)
+
+        embed.set_footer(text=f"Showing {start + 1}-{end} of {len(self.comments)}")
+        return embed
+
+    async def prev_page(self, interaction: discord.Interaction):
+        if self.page > 0:
+            self.page -= 1
+            self.update_button_states()
+            await interaction.response.edit_message(embed=self.format_embed(), view=self)
+        else:
+            await interaction.response.defer()
+
+    async def next_page(self, interaction: discord.Interaction):
+        total_pages = (len(self.comments) + self.page_size - 1) // self.page_size
+        if self.page < total_pages - 1:
+            self.page += 1
+            self.update_button_states()
+            await interaction.response.edit_message(embed=self.format_embed(), view=self)
+        else:
+            await interaction.response.defer()
+
 
 class PullRequest(commands.Cog):
     def __init__(self, bot):
@@ -21,9 +81,7 @@ class PullRequest(commands.Cog):
         user = await self.users_collection.find_one({"discord_id": discord_id})
         token = user.get("token") if user else None
 
-        headers = {
-            "Accept": "application/vnd.github.v3+json",
-        }
+        headers = {"Accept": "application/vnd.github.v3+json"}
         if token:
             headers["Authorization"] = f"token {token}"
 
@@ -57,9 +115,7 @@ class PullRequest(commands.Cog):
         user = await self.users_collection.find_one({"discord_id": discord_id})
         token = user.get("token") if user else None
 
-        headers = {
-            "Accept": "application/vnd.github.v3+json",
-        }
+        headers = {"Accept": "application/vnd.github.v3+json"}
         if token:
             headers["Authorization"] = f"token {token}"
 
@@ -206,9 +262,7 @@ class PullRequest(commands.Cog):
             "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json"
         }
-        json_data = {
-            "state": "closed"
-        }
+        json_data = {"state": "closed"}
         async with httpx.AsyncClient() as client:
             res = await client.patch(url, headers=headers, json=json_data)
             data = res.json()
@@ -218,6 +272,57 @@ class PullRequest(commands.Cog):
         else:
             message = data.get("message", "Unknown error.")
             await interaction.followup.send(f"❌ Failed to close PR #{pr_id}: {message}", ephemeral=True)
+
+    @pr_group.command(name="comment", description="Post a comment on a pull request (requires authentication)")
+    @app_commands.describe(repo="owner/repo", pr_id="Pull request number", comment="Your comment text")
+    async def pr_comment(self, interaction: discord.Interaction, repo: str, pr_id: int, comment: str):
+        await interaction.response.defer(ephemeral=True)
+        discord_id = str(interaction.user.id)
+        user = await self.users_collection.find_one({"discord_id": discord_id})
+        if not user or not user.get("token"):
+            await interaction.followup.send("❌ You must link your GitHub account using `/auth` to comment.", ephemeral=True)
+            return
+
+        try:
+            owner, repo_name = repo.split('/')
+        except ValueError:
+            return await interaction.followup.send("Invalid repository format. Use `owner/repo`.", ephemeral=True)
+
+        url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{pr_id}/comments"
+        headers = {
+            "Authorization": f"token {user['token']}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, headers=headers, json={"body": comment})
+            if r.status_code == 201:
+                await interaction.followup.send("✅ Comment posted successfully.", ephemeral=True)
+            else:
+                await interaction.followup.send(f"❌ Failed to post comment. ({r.status_code})", ephemeral=True)
+
+    @pr_group.command(name="comments", description="List comments on a pull request")
+    @app_commands.describe(repo="owner/repo", pr_id="Pull request number")
+    async def pr_comments(self, interaction: discord.Interaction, repo: str, pr_id: int):
+        await interaction.response.defer()
+        try:
+            owner, repo_name = repo.split('/')
+        except ValueError:
+            return await interaction.followup.send("Invalid repository format. Use `owner/repo`.")
+
+        url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{pr_id}/comments"
+        async with httpx.AsyncClient() as client:
+            r = await client.get(url, headers={"Accept": "application/vnd.github.v3+json"})
+            if r.status_code != 200:
+                return await interaction.followup.send(f"❌ Failed to fetch comments. ({r.status_code})")
+
+            comments = r.json()
+            if not comments:
+                return await interaction.followup.send("💬 No comments found.")
+
+            paginator = CommentPaginator(comments)
+            await interaction.followup.send(embed=paginator.format_embed(), view=paginator)
+
 
 async def setup(bot):
     await bot.add_cog(PullRequest(bot))
