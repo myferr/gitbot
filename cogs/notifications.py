@@ -21,7 +21,9 @@ class GitHubNotifications(commands.Cog):
             await interaction.followup.send("⚠️ You must authenticate first using `/auth`.", ephemeral=True)
             return
 
-        token = user["token"]
+        from token_handler import TokenHandler
+        token_handler = TokenHandler()
+        token = token_handler.decrypt(user["token"]) if user and user.get("token") else None
         headers = {
             "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json",

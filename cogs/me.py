@@ -22,7 +22,9 @@ class Me(commands.Cog):
             )
             return
 
-        token = user.get("token")
+        from token_handler import TokenHandler
+        token_handler = TokenHandler()
+        token = token_handler.decrypt(user.get("token")) if user and user.get("token") else None
         github_user = user.get("github_user")
 
         if not token or not github_user:

@@ -76,12 +76,14 @@ class FileModal(discord.ui.Modal):
 class File(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        from token_handler import TokenHandler
+        self.token_handler = TokenHandler()
 
     file_group = app_commands.Group(name="file", description="Manage GitHub repository files")
 
     async def get_user_token(self, discord_id: int):
         user = mongo.gitbot.users.find_one({"discord_id": str(discord_id)})
-        return user.get("token") if user else None
+        return self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
 
     @file_group.command(name="create", description="Create a new file in a repository")
     @app_commands.describe(repo="owner/repo", path="Path to the file")

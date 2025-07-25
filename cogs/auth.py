@@ -11,6 +11,8 @@ class Auth(commands.Cog):
         self.backend_base_url = os.getenv("BACKEND_BASE_URL", "http://localhost:2000")
         self.mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
         self.users_collection = self.mongo_client.gitbot.users
+        from token_handler import TokenHandler
+        self.token_handler = TokenHandler()
 
     @app_commands.command(name="auth", description="Link your GitHub account with GitBot")
     async def auth(self, interaction: discord.Interaction):
