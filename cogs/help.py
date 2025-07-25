@@ -1,77 +1,115 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
+from discord import app_commands
+from pymongo import MongoClient
+import os
 
-class HelpCommand(commands.Cog):
+# Mongo setup (adjust if you're already using a global db client elsewhere)
+MONGO_URI = os.getenv("MONGO_URI")
+mongo = MongoClient(MONGO_URI)
+users_col = mongo.gitbot.users
+
+class Help(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="help", description="Shows this help message.")
+    @app_commands.command(name="help", description="List all GitBot commands")
     async def help(self, interaction: discord.Interaction):
-        embed = discord.Embed(
-            title="GitBot Help",
-            description="GitBot is a Discord bot that allows you to interact with GitHub.",
-            color=0x7289da
-        )
-        embed.add_field(
-            name="Authentication",
-            value="`/auth`: Link your GitHub account with GitBot.\n"
-                  "`/unauth`: Unlink your GitHub account from GitBot.\n"
-                  "`/me`: Show your GitHub authentication status and profile info.",
-            inline=False
-        )
-        embed.add_field(
-            name="Repositories",
-            value="`/repo view <owner/repo>`: View GitHub repository information.\n"
-                  "`/repo create`: Create a new GitHub repository.\n"
-                  "`/releases <owner/repo>`: Lists the latest releases of a GitHub repository.\n"
-                  "`/release <owner/repo> <tag>`: Shows information about a specific release.\n"
-                  "`/changelog <owner/repo>`: Lists recent commits (changelog) for a GitHub repository.\n"
-                  "`/commit <owner/repo> <sha>`: Shows information about a specific commit.\n"
-                  "`/license <owner/repo>`: Shows the license information for a GitHub repository.",
-            inline=False
-        )
-        embed.add_field(
-            name="Issues",
-            value="`/issue open <owner/repo> [issue_id]`: Get information on open GitHub issues.\n"
-                  "`/issue closed <owner/repo> [issue_id]`: Get information on closed GitHub issues.\n"
-                  "`/issue new <owner/repo>`: Create a new GitHub issue.\n"
-                  "`/issue close <owner/repo> <issue_id>`: Close a GitHub issue.",
-            inline=False
-        )
-        embed.add_field(
-            name="Pull Requests",
-            value="`/pr open <owner/repo> [pr_id]`: Get information on open GitHub pull requests.\n"
-                  "`/pr closed <owner/repo> [pr_id]`: Get information on closed GitHub pull requests.\n"
-                  "`/pr merge <owner/repo> <pr_id>`: Merge a pull request.\n"
-                  "`/pr close <owner/repo> <pr_id>`: Close a pull request without merging.",
-            inline=False
-        )
-        embed.add_field(
-            name="Gists",
-            value="`/gist info <gist_id>`: Provides detailed information about a GitHub Gist.\n"
-                  "`/gist content <gist_id> <filename>`: Shows the content of a specific file within a GitHub Gist.",
-            inline=False
-        )
-        embed.add_field(
-            name="Users",
-            value="`/profile <username>`: Displays comprehensive information about a GitHub user.\n"
-                  "`/top langs <username>`: Show top used languages for a user.\n"
+        user = users_col.find_one({"discord_id": str(interaction.user.id)})
+        is_authed = bool(user and user.get("token"))
 
-                  "`/top repos <username>`: Show a user's repositories sorted by stars.",
-            inline=False
+        auth_status = "✅ You are authenticated!" if is_authed else "❌ You are not authenticated.\nUse `/auth` to link your GitHub account."
+
+        embed = discord.Embed(
+            title="📘 GitBot Command Reference",
+            description=auth_status,
+            color=discord.Color.green() if is_authed else discord.Color.red()
         )
+
         embed.add_field(
-            name="Files",
-            value="`/file <owner/repo> <path>`: Shows the content of a file from a GitHub repository.",
+            name="🔐 Authentication",
+            value=(
+                "`/auth` – Link your GitHub account.\n"
+                "`/unauth` – Unlink your GitHub account.\n"
+                "`/me` – Show your GitHub link status and profile."
+            ),
             inline=False
         )
+
         embed.add_field(
-            name="Notifications",
-            value="`/notifications`: Get your GitHub notifications via DM.",
+            name="📁 Repositories",
+            value=(
+                "`/repo` – View repository info.\n"
+                "`/repo create` – Create a new repo (modal)."
+            ),
             inline=False
         )
+
+        embed.add_field(
+            name="🗃️ Files",
+            value=(
+                "`/file view` – View a file in a repo.\n"
+                "`/file create` – Create a new file with content.\n"
+                "`/file edit` – Edit a file (via modal).\n"
+                "`/file remove` – Delete a file from the repo.\n"
+                "`/file tree` - See the file tree of a repository"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="💬 Comments",
+            value=(
+                "`/pr comments` – List comments on a PR.\n"
+                "`/pr comment` – Add a comment to a PR.\n"
+                "`/issue comments` – List comments on an issue.\n"
+                "`/issue comment` – Add a comment to an issue."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔀 Pull Requests",
+            value=(
+                "`/pr open` – List open pull requests.\n"
+                "`/pr closed` – List closed pull requests.\n"
+                "`/pr merge` – Merge a PR.\n"
+                "`/pr close` – Close a PR."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="🐞 Issues",
+            value=(
+                "`/issue open` – List open issues.\n"
+                "`/issue create` – Create a new issue.\n"
+                "`/issue close` – Close an issue."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="🏷️ Tags",
+            value=(
+                "`/tag list` – List tags.\n"
+                "`/tag create` – Create a new tag.\n"
+                "`/tag info` - Get information on a tag"
+                "`/tag remove` – Delete a tag."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="📬 Notifications",
+            value="`/notifications` – DM your GitHub unread notifications.",
+            inline=False
+        )
+
+
+        embed.set_footer(text="GitBot by myferr | https://github.com/myferr")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-async def setup(bot):
-    await bot.add_cog(HelpCommand(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Help(bot))
+
