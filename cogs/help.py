@@ -74,7 +74,7 @@ class Help(commands.Cog):
                 "`/pr open` – List open pull requests.\n"
                 "`/pr closed` – List closed pull requests.\n"
                 "`/pr merge` – Merge a PR.\n"
-                "`/pr close` – Close a PR."
+                "`/pr close` – Close a PR.\n"
             ),
             inline=False
         )
@@ -90,6 +90,15 @@ class Help(commands.Cog):
         )
 
         embed.add_field(
+            name="🤔 Review",
+            value=(
+                "`/review pr` - Get an AI-generated review of a PR"
+                "`/review repo` - Get an AI-generated review of a repository"
+                "`/review issue` - Get an AI-generated review of an issue"
+            )
+        )
+
+        embed.add_field(
             name="🏷️ Tags",
             value=(
                 "`/tag list` – List tags.\n"
@@ -101,8 +110,11 @@ class Help(commands.Cog):
         )
 
         embed.add_field(
-            name="📬 Notifications",
-            value="`/notifications` – DM your GitHub unread notifications.",
+            name="👋 You",
+            value=(
+                "`/notifications` – DM your GitHub unread notifications.\n"
+                "/profile` – View a GitHub user's profile information."
+            ),
             inline=False
         )
 
