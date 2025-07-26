@@ -13,11 +13,12 @@ class Me(commands.Cog):
 
     @app_commands.command(name="me", description="Show your GitHub authentication status and profile info")
     async def me(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         discord_id = str(interaction.user.id)
         user = await self.users_collection.find_one({"discord_id": discord_id})
 
         if not user:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ You are not linked to any GitHub account. Use `/auth` to link your account.", ephemeral=True
             )
             return
@@ -28,7 +29,7 @@ class Me(commands.Cog):
         github_user = user.get("github_user")
 
         if not token or not github_user:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "⚠️ Your GitHub authentication info seems incomplete. Please re-authenticate with `/auth`.", ephemeral=True
             )
             return
@@ -37,7 +38,7 @@ class Me(commands.Cog):
         async with httpx.AsyncClient() as client:
             res = await client.get("https://api.github.com/user", headers=headers)
             if res.status_code != 200:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "⚠️ Failed to fetch GitHub profile. Your token may be invalid. Please re-authenticate.", ephemeral=True
                 )
                 return
@@ -57,7 +58,7 @@ class Me(commands.Cog):
             embed.add_field(name="Location", value=data.get("location") or "N/A", inline=True)
             embed.add_field(name="Email", value=data.get("email") or "N/A", inline=True)
 
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Me(bot))
