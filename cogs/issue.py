@@ -214,7 +214,9 @@ class Issue(commands.Cog):
             await interaction.followup.send("❌ You must link your GitHub account using `/auth` before closing issues.", ephemeral=True)
             return
 
-        token = user.get("token")
+        from token_handler import TokenHandler
+        token_handler = TokenHandler()
+        token = token_handler.decrypt(user.get("token")) if user and user.get("token") else None
         if not token:
             await interaction.followup.send("❌ Your GitHub token is missing. Please re-authenticate with `/auth`.", ephemeral=True)
             return

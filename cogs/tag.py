@@ -56,8 +56,10 @@ class Tag(commands.Cog):
         self.users = mongo.gitbot.users
 
     async def get_token(self, discord_id: str) -> Optional[str]:
+        from token_handler import TokenHandler
+        token_handler = TokenHandler()
         user = await self.users.find_one({"discord_id": discord_id})
-        return user.get("token") if user else None
+        return token_handler.decrypt(user.get("token")) if user and user.get("token") else None
 
     async def github_get(self, url: str, token: Optional[str] = None):
         headers = {"Authorization": f"token {token}"} if token else {}
