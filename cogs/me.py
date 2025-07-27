@@ -10,6 +10,12 @@ class Me(commands.Cog):
         self.bot = bot
         self.mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
         self.users_collection = self.mongo_client.gitbot.users
+        from token_handler import TokenHandler
+        try:
+            self.token_handler = TokenHandler()
+        except ValueError as e:
+            print(f"Error initializing TokenHandler in Me cog: {e}")
+            raise
 
     @app_commands.command(name="me", description="Show your GitHub authentication status and profile info")
     async def me(self, interaction: discord.Interaction):
@@ -24,9 +30,7 @@ class Me(commands.Cog):
                 )
                 return
 
-            from token_handler import TokenHandler
-            token_handler = TokenHandler()
-            token = token_handler.decrypt(user.get("token")) if user and user.get("token") else None
+            token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
             github_user = user.get("github_user")
 
             if not token or not github_user:

@@ -12,11 +12,11 @@ class TokenHandler:
     def __init__(self):
         key = os.getenv("ENCRYPTION_KEY")
         if not key:
-            raise ValueError("ENCRYPTION_KEY environment variable not set")
+            raise ValueError("ENCRYPTION_KEY environment variable not set. Please ask the administrator to set it.")
         self.fernet = Fernet(key.encode())
 
     def encrypt(self, token: str) -> str:
-        return self.fernet.encrypt(token.encode()).decode()
+        return self.fernet.encrypt(token).decode()
 
     def decrypt(self, encrypted_token: str) -> str:
-        return self.fernet.decrypt(encrypted_token.encode()).decode()
+        return self.fernet.decrypt(encrypted_token).decode()

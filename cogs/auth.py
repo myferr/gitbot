@@ -12,7 +12,11 @@ class Auth(commands.Cog):
         self.mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
         self.users_collection = self.mongo_client.gitbot.users
         from token_handler import TokenHandler
-        self.token_handler = TokenHandler()
+        try:
+            self.token_handler = TokenHandler()
+        except ValueError as e:
+            print(f"Error initializing TokenHandler in Auth cog: {e}")
+            raise
 
     @app_commands.command(name="auth", description="Link your GitHub account with GitBot")
     async def auth(self, interaction: discord.Interaction):

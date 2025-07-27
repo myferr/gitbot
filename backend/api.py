@@ -57,7 +57,7 @@ def callback(code: str, discord: str):
         return HTMLResponse("❌ Failed to fetch user", status_code=400)
 
     # Step 3: Encrypt token
-    encrypted_token = fernet.encrypt(access_token.encode())
+    encrypted_token = fernet.encrypt(access_token.encode('utf-8'))
 
     # Step 4: Save encrypted token to DB
     users.update_one(
