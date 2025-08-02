@@ -101,6 +101,8 @@ class Issue(commands.Cog):
         self.bot = bot
         self.mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
         self.users_collection = self.mongo_client.gitbot.users
+        from token_handler import TokenHandler
+        self.token_handler = TokenHandler()
 
     issue_group = app_commands.Group(name="issue", description="Commands for GitHub issues")
 
@@ -210,13 +212,9 @@ class Issue(commands.Cog):
 
         discord_id = str(interaction.user.id)
         user = await self.users_collection.find_one({"discord_id": discord_id})
-        if not user:
-            await interaction.followup.send("❌ You must link your GitHub account using `/auth` before closing issues.", ephemeral=True)
-            return
-
-        token = user.get("token")
+        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
         if not token:
-            await interaction.followup.send("❌ Your GitHub token is missing. Please re-authenticate with `/auth`.", ephemeral=True)
+            await interaction.followup.send("❌ You must link your GitHub account using `/auth` before closing issues.", ephemeral=True)
             return
 
         try:
@@ -250,13 +248,9 @@ class Issue(commands.Cog):
     async def issue_new(self, interaction: discord.Interaction, repo: str):
         discord_id = str(interaction.user.id)
         user = await self.users_collection.find_one({"discord_id": discord_id})
-        if not user:
-            await interaction.response.send_message("❌ You must link your GitHub account using `/auth` before creating issues.", ephemeral=True)
-            return
-
-        token = user.get("token")
+        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
         if not token:
-            await interaction.response.send_message("❌ Your GitHub token is missing. Please re-authenticate with `/auth`.", ephemeral=True)
+            await interaction.response.send_message("❌ You must link your GitHub account using `/auth` before creating issues.", ephemeral=True)
             return
 
         modal = NewIssueModal(repo, token)
@@ -295,7 +289,8 @@ class Issue(commands.Cog):
 
         discord_id = str(interaction.user.id)
         user = await self.users_collection.find_one({"discord_id": discord_id})
-        if not user or not user.get("token"):
+        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
+        if not token:
             await interaction.followup.send("❌ You must link your GitHub account using `/auth`.", ephemeral=True)
             return
         try:
@@ -306,7 +301,7 @@ class Issue(commands.Cog):
 
         url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{issue_id}/comments"
         headers = {
-            "Authorization": f"token {user['token']}",
+            "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json"
         }
 

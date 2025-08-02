@@ -84,6 +84,8 @@ class RepoCommands(commands.GroupCog, name="repo"):
     def __init__(self, bot):
         self.bot = bot
         self.users = AsyncIOMotorClient(os.getenv("MONGO_URI")).gitbot.users
+        from token_handler import TokenHandler
+        self.token_handler = TokenHandler()
 
     @app_commands.command(name="view", description="View GitHub repository information.")
     @app_commands.describe(repo="Format `owner/repo`.")
@@ -148,7 +150,8 @@ class RepoCommands(commands.GroupCog, name="repo"):
             await interaction.response.send_message("⚠️ You must authenticate first using `/auth`.", ephemeral=True)
             return
 
-        token = user["token"]
+        token_handler = self.token_handler
+        token = token_handler.decrypt(user["token"]) if user and user.get("token") else None
 
         # Fetch license keys to validate input
         async with httpx.AsyncClient() as client:

@@ -12,11 +12,15 @@ users_col = mongo.gitbot.users
 class Help(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        from token_handler import TokenHandler
+        self.token_handler = TokenHandler()
 
     @app_commands.command(name="help", description="List all GitBot commands")
     async def help(self, interaction: discord.Interaction):
+        token_handler = self.token_handler
         user = users_col.find_one({"discord_id": str(interaction.user.id)})
-        is_authed = bool(user and user.get("token"))
+        token = token_handler.decrypt(user.get("token")) if user and user.get("token") else None
+        is_authed = bool(token)
 
         auth_status = "✅ You are authenticated!" if is_authed else "❌ You are not authenticated.\nUse `/auth` to link your GitHub account."
 
