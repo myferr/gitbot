@@ -11,6 +11,8 @@ class GitHubNotifications(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.users = AsyncIOMotorClient(os.getenv("MONGO_URI")).gitbot.users
+        from token_handler import TokenHandler
+        self.token_handler = TokenHandler()
 
     @app_commands.command(name="notifications", description="Get your GitHub notifications via DM.")
     async def notifications(self, interaction: discord.Interaction):
@@ -21,8 +23,7 @@ class GitHubNotifications(commands.Cog):
             await interaction.followup.send("⚠️ You must authenticate first using `/auth`.", ephemeral=True)
             return
 
-        from token_handler import TokenHandler
-        token_handler = TokenHandler()
+        token_handler = self.token_handler
         token = token_handler.decrypt(user["token"]) if user and user.get("token") else None
         headers = {
             "Authorization": f"token {token}",

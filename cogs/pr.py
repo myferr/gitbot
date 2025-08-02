@@ -74,6 +74,7 @@ class PullRequest(commands.Cog):
         self.bot = bot
         self.mongo_client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
         self.users_collection = self.mongo_client.gitbot.users
+        from token_handler import TokenHandler
         self.token_handler = TokenHandler()
 
     pr_group = app_commands.Group(name="pr", description="Commands for GitHub pull requests")
@@ -201,13 +202,9 @@ class PullRequest(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         discord_id = str(interaction.user.id)
         user = await self.users_collection.find_one({"discord_id": discord_id})
-        if not user:
-            await interaction.followup.send("❌ You must link your GitHub account using `/auth` before merging PRs.", ephemeral=True)
-            return
-
-        token = user.get("token")
+        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
         if not token:
-            await interaction.followup.send("❌ Your GitHub token is missing. Please re-authenticate with `/auth`.", ephemeral=True)
+            await interaction.followup.send("❌ You must link your GitHub account using `/auth` before merging PRs.", ephemeral=True)
             return
 
         try:
@@ -242,13 +239,9 @@ class PullRequest(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         discord_id = str(interaction.user.id)
         user = await self.users_collection.find_one({"discord_id": discord_id})
-        if not user:
-            await interaction.followup.send("❌ You must link your GitHub account using `/auth` before closing PRs.", ephemeral=True)
-            return
-
-        token = user.get("token")
+        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
         if not token:
-            await interaction.followup.send("❌ Your GitHub token is missing. Please re-authenticate with `/auth`.", ephemeral=True)
+            await interaction.followup.send("❌ You must link your GitHub account using `/auth` before closing PRs.", ephemeral=True)
             return
 
         try:
@@ -279,7 +272,8 @@ class PullRequest(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         discord_id = str(interaction.user.id)
         user = await self.users_collection.find_one({"discord_id": discord_id})
-        if not user or not user.get("token"):
+        token = self.token_handler.decrypt(user.get("token")) if user and user.get("token") else None
+        if not token:
             await interaction.followup.send("❌ You must link your GitHub account using `/auth` to comment.", ephemeral=True)
             return
 
@@ -290,7 +284,7 @@ class PullRequest(commands.Cog):
 
         url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{pr_id}/comments"
         headers = {
-            "Authorization": f"token {user['token']}",
+            "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json"
         }
 
