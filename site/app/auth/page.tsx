@@ -21,7 +21,7 @@ function AuthRedirect() {
     const redirectUri = `${backendBaseUrl}/callback?discord=${discord}`;
     const encodedRedirectUri = encodeURIComponent(redirectUri);
 
-    const oauthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodedRedirectUri}&scope=${encodedScopes}`;
+    const oauthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodedRedirectUri.replace("%2F%2Fcallback", "/callback")}&scope=${encodedScopes}`;
     window.location.href = oauthUrl;
   }, [searchParams]);
 
